@@ -1,18 +1,36 @@
 import { useRouter } from 'expo-router';
 import { useState } from 'react';
-import { StyleSheet, Text, TextInput, TouchableOpacity, View } from 'react-native';
+import { Alert, StyleSheet, Text, TextInput, TouchableOpacity, View } from 'react-native';
+import { BASE_URL } from '../constants';
 
 export default function LoginScreen() {
   const router = useRouter();
   const [email, setEmail] = useState('');
-  const [password, setPassword] = useState('');
+  const [name, setName] = useState('');
+
+  const loginUser = async () => {
+    try {
+      const res = await fetch(`${BASE_URL}/api/users`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ name, email })
+      });
+      const data = await res.json();
+      console.log(data);
+      Alert.alert('Login', data.message || 'Welcome!');
+      router.push('/home');
+    } catch (error) {
+      Alert.alert('Error', 'Login failed');
+      console.error(error);
+    }
+  };
 
   return (
     <View style={styles.container}>
       <Text style={styles.title}>Login</Text>
-      <TextInput placeholder="Email" placeholderTextColor="#888" value={email} onChangeText={setEmail} style={styles.input} />
-      <TextInput placeholder="Password" secureTextEntry placeholderTextColor="#888" value={password} onChangeText={setPassword} style={styles.input} />
-      <TouchableOpacity style={styles.button} onPress={() => router.push('/home')}>
+      <TextInput placeholder="Name" value={name} onChangeText={setName} style={styles.input} />
+      <TextInput placeholder="Email" value={email} onChangeText={setEmail} style={styles.input} />
+      <TouchableOpacity style={styles.button} onPress={loginUser}>
         <Text style={styles.buttonText}>Login</Text>
       </TouchableOpacity>
     </View>
