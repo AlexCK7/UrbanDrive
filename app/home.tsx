@@ -1,43 +1,78 @@
+// app/home.tsx
 import { useRouter } from 'expo-router';
-import { useEffect, useState } from 'react';
-import { StyleSheet, Text, TouchableOpacity, View } from 'react-native';
-import { getUserInfo } from '../utils/secureStore';
+import * as SecureStore from 'expo-secure-store';
+import React, { useEffect, useState } from 'react';
+import { ActivityIndicator, Alert, Button, StyleSheet, Text, View } from 'react-native';
+import { BASE_URL } from '../utils/constants';
 
-export default function HomeScreen() {
+export default function Home() {
   const router = useRouter();
-  const [name, setName] = useState('');
+  const [userName, setUserName] = useState('');
+  const [loading, setLoading] = useState(true);
 
   useEffect(() => {
-    const loadUser = async () => {
-      const { name } = await getUserInfo();
-      setName(name || 'Guest');
+    const fetchUser = async () => {
+      try {
+        const email = await SecureStore.getItemAsync('userEmail');
+        if (!email) {
+          Alert.alert('Not logged in', 'Please log in again.');
+          router.replace('/login');
+          return;
+        }
+
+        const res = await fetch(`${BASE_URL}/api/user-info`, {
+          headers: {
+            'x-user-email': email,
+          },
+        });
+
+        const data = await res.json();
+
+        if (res.ok) {
+          setUserName(data.name || 'User');
+        } else {
+          Alert.alert('Error', data.error || 'Failed to fetch user info.');
+        }
+      } catch (err) {
+        console.error('User fetch failed:', err);
+        Alert.alert('Error', 'Unable to load user data.');
+      } finally {
+        setLoading(false);
+      }
     };
-    loadUser();
+
+    fetchUser();
   }, []);
+
+  if (loading) {
+    return (
+      <View style={styles.container}>
+        <ActivityIndicator size="large" color="#000" />
+      </View>
+    );
+  }
 
   return (
     <View style={styles.container}>
-      <Text style={styles.welcome}>Welcome back, {name} 👋</Text>
-      <TouchableOpacity onPress={() => router.push('/ride-booking')}>
-        <Text style={styles.buttonText}>🚗 Book a Ride</Text>
-      </TouchableOpacity>
-      <TouchableOpacity onPress={() => router.push('/ride-history')}>
-        <Text style={styles.buttonText}>📜 Ride History</Text>
-      </TouchableOpacity>
+      <Text style={styles.welcome}>Welcome back, {userName} 👋</Text>
+      <Button title="Book a Ride" onPress={() => router.push('/ride-booking')} />
+      <View style={styles.spacer} />
+      <Button title="View Ride History" onPress={() => router.push('/ride-history')} />
     </View>
   );
 }
 
 const styles = StyleSheet.create({
-  container: { flex: 1, justifyContent: 'center', padding: 20, backgroundColor: '#fff' },
-  welcome: { fontSize: 22, fontWeight: '600', marginBottom: 20, textAlign: 'center' },
-  buttonText: {
-    fontSize: 16,
-    textAlign: 'center',
-    backgroundColor: '#000',
-    color: '#fff',
-    padding: 10,
-    borderRadius: 8,
-    marginBottom: 10
+  container: {
+    flex: 1,
+    justifyContent: 'center',
+    alignItems: 'center'
   },
+  welcome: {
+    fontSize: 22,
+    marginBottom: 30
+  },
+  spacer: {
+    height: 20
+  }
 });

@@ -1,7 +1,7 @@
 import { useRouter } from 'expo-router';
 import { useState } from 'react';
 import { Alert, StyleSheet, Text, TextInput, TouchableOpacity, View } from 'react-native';
-import { BASE_URL } from '../constants';
+import { BASE_URL } from '../utils/constants';
 import { getUserInfo } from '../utils/secureStore';
 
 export default function RideBooking() {

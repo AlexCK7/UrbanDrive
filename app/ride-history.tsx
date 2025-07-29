@@ -1,6 +1,6 @@
 import { useEffect, useState } from 'react';
 import { ActivityIndicator, FlatList, StyleSheet, Text, View } from 'react-native';
-import { BASE_URL } from '../constants';
+import { BASE_URL } from '../utils/constants';
 import { getUserInfo } from '../utils/secureStore';
 
 // ✅ Define type for each ride
