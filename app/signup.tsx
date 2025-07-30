@@ -1,5 +1,5 @@
 import { useRouter } from 'expo-router';
-import { useState } from 'react';
+import React, { useState } from 'react';
 import { Alert, StyleSheet, Text, TextInput, TouchableOpacity, View } from 'react-native';
 import { BASE_URL } from '../utils/constants';
 import { saveUserInfo } from '../utils/secureStore'; // ⬅️ Top of file
@@ -20,7 +20,7 @@ export default function SignUpScreen() {
       console.log(data);
       Alert.alert('Sign Up', data.message || 'Welcome!');
       // Inside try block, after a successful signup
-      await saveUserInfo(name, email);
+      await saveUserInfo({ name, email, id: data.id });
       router.push('/home');
     } catch (error) {
       Alert.alert('Error', 'Sign up failed');

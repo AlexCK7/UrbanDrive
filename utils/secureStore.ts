@@ -1,18 +1,14 @@
-// utils/secureStore.ts
 import * as SecureStore from 'expo-secure-store';
 
-export async function saveUserInfo(name: string, email: string) {
-  await SecureStore.setItemAsync('userName', name);
-  await SecureStore.setItemAsync('userEmail', email);
-}
+export const saveUserInfo = async (user: { name: string; email: string; id: number }) => {
+  await SecureStore.setItemAsync('user', JSON.stringify(user));
+};
 
-export async function getUserInfo() {
-  const name = await SecureStore.getItemAsync('userName');
-  const email = await SecureStore.getItemAsync('userEmail');
-  return { name, email };
-}
+export const getUserInfo = async () => {
+  const result = await SecureStore.getItemAsync('user');
+  return result ? JSON.parse(result) : null;
+};
 
 export async function clearUserInfo() {
-  await SecureStore.deleteItemAsync('userName');
-  await SecureStore.deleteItemAsync('userEmail');
+  await SecureStore.deleteItemAsync('user');
 }

@@ -6,7 +6,10 @@
       "@/*": [
         "./*"
       ]
-    }
+    },
+    "jsx": "react-native",
+    "lib": ["dom", "esnext"],
+    "types": ["react", "react-native"]
   },
   "include": [
     "**/*.ts",
