@@ -1,49 +1,126 @@
 import { useRouter } from 'expo-router';
 import React, { useState } from 'react';
-import { Alert, StyleSheet, Text, TextInput, TouchableOpacity, View } from 'react-native';
+import {
+  ActivityIndicator,
+  Alert,
+  Keyboard,
+  SafeAreaView,
+  StyleSheet,
+  Text,
+  TextInput,
+  TouchableOpacity,
+  TouchableWithoutFeedback
+} from 'react-native';
 import { BASE_URL } from '../utils/constants';
-import { saveUserInfo } from '../utils/secureStore'; // ⬅️ Top of file
 
-export default function SignUpScreen() {
+export default function SignupScreen() {
   const router = useRouter();
-  const [email, setEmail] = useState('');
   const [name, setName] = useState('');
+  const [email, setEmail] = useState('');
+  const [password, setPassword] = useState('');
+  const [loading, setLoading] = useState(false);
 
-  const signUpUser = async () => {
+  const handleSignup = async () => {
+    if (!name || !email || !password) {
+      Alert.alert('Missing Fields', 'Please fill in all fields.');
+      return;
+    }
+
+    setLoading(true);
     try {
-      const res = await fetch(`${BASE_URL}/api/users`, {
+      const res = await fetch(`${BASE_URL}/api/users/signup`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ name, email })
+        body: JSON.stringify({ name, email, password }),
       });
+
+      if (!res.ok) {
+        const error = await res.text();
+        console.error('❌ Signup error:', error);
+        throw new Error('Signup failed');
+      }
+
       const data = await res.json();
-      console.log(data);
-      Alert.alert('Sign Up', data.message || 'Welcome!');
-      // Inside try block, after a successful signup
-      await saveUserInfo({ name, email, id: data.id });
-      router.push('/home');
-    } catch (error) {
-      Alert.alert('Error', 'Sign up failed');
-      console.error(error);
+      console.log('✅ Signup successful:', data);
+
+      Alert.alert('Success', 'Account created successfully!');
+      router.push('/login');
+    } catch (error: any) {
+      console.error('❌ Signup network error:', error.message || error);
+      Alert.alert('Error', 'Signup failed. Try again later.');
+    } finally {
+      setLoading(false);
     }
   };
 
   return (
-    <View style={styles.container}>
-      <Text style={styles.title}>Sign Up</Text>
-      <TextInput placeholder="Name" value={name} onChangeText={setName} style={styles.input} />
-      <TextInput placeholder="Email" value={email} onChangeText={setEmail} style={styles.input} />
-      <TouchableOpacity style={styles.button} onPress={signUpUser}>
-        <Text style={styles.buttonText}>Sign Up</Text>
-      </TouchableOpacity>
-    </View>
+    <TouchableWithoutFeedback onPress={Keyboard.dismiss}>
+      <SafeAreaView style={styles.container}>
+        <TouchableOpacity onPress={() => router.back()}>
+          <Text style={styles.back}>← Back</Text>
+        </TouchableOpacity>
+        <Text style={styles.title}>Sign Up</Text>
+
+        <TextInput
+          style={styles.input}
+          placeholder="Name"
+          placeholderTextColor="#777"
+          onChangeText={setName}
+          value={name}
+        />
+        <TextInput
+          style={styles.input}
+          placeholder="Email"
+          placeholderTextColor="#777"
+          onChangeText={setEmail}
+          value={email}
+          autoCapitalize="none"
+          keyboardType="email-address"
+        />
+        <TextInput
+          style={styles.input}
+          placeholder="Password"
+          placeholderTextColor="#777"
+          onChangeText={setPassword}
+          value={password}
+          secureTextEntry
+        />
+
+        <TouchableOpacity style={styles.button} onPress={handleSignup} disabled={loading}>
+          {loading ? (
+            <ActivityIndicator color="#fff" />
+          ) : (
+            <Text style={styles.buttonText}>Sign Up</Text>
+          )}
+        </TouchableOpacity>
+      </SafeAreaView>
+    </TouchableWithoutFeedback>
   );
 }
 
 const styles = StyleSheet.create({
-  container: { flex: 1, justifyContent: 'center', padding: 20, backgroundColor: '#fff' },
-  title: { fontSize: 24, fontWeight: '600', marginBottom: 20, textAlign: 'center' },
-  input: { borderWidth: 1, borderColor: '#ccc', borderRadius: 8, padding: 12, marginBottom: 12 },
-  button: { backgroundColor: '#000', padding: 12, borderRadius: 8, alignItems: 'center' },
+  container: {
+    flex: 1,
+    padding: 20,
+    justifyContent: 'center',
+    backgroundColor: '#fff',
+  },
+  back: { fontSize: 16, marginBottom: 20, color: '#007AFF' },
+  title: { fontSize: 26, fontWeight: 'bold', marginBottom: 20, textAlign: 'center' },
+  input: {
+    borderWidth: 1,
+    borderColor: '#ccc',
+    padding: 12,
+    marginBottom: 15,
+    borderRadius: 6,
+    fontSize: 16,
+    color: '#000',
+  },
+  button: {
+    backgroundColor: '#007AFF',
+    padding: 12,
+    borderRadius: 6,
+    alignItems: 'center',
+  },
   buttonText: { color: '#fff', fontSize: 16 },
 });

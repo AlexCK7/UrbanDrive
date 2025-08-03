@@ -1,78 +1,86 @@
-// app/home.tsx
 import { useRouter } from 'expo-router';
-import * as SecureStore from 'expo-secure-store';
 import React, { useEffect, useState } from 'react';
-import { ActivityIndicator, Alert, Button, StyleSheet, Text, View } from 'react-native';
-import { BASE_URL } from '../utils/constants';
+import {
+  ActivityIndicator,
+  Alert,
+  StyleSheet,
+  Text,
+  TouchableOpacity,
+  View,
+} from 'react-native';
+import { getUserInfo } from '../utils/secureStore';
 
-export default function Home() {
+export default function HomeScreen() {
   const router = useRouter();
-  const [userName, setUserName] = useState('');
+  const [user, setUser] = useState<{ name: string; role: string } | null>(null);
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
-    const fetchUser = async () => {
+    const fetchAndSetUser = async () => {
       try {
-        const email = await SecureStore.getItemAsync('userEmail');
-        if (!email) {
-          Alert.alert('Not logged in', 'Please log in again.');
+        const storedUser = await getUserInfo();
+        if (!storedUser) {
+          Alert.alert('Session Expired', 'Please log in again.');
           router.replace('/login');
           return;
         }
-
-        const res = await fetch(`${BASE_URL}/api/user-info`, {
-          headers: {
-            'x-user-email': email,
-          },
-        });
-
-        const data = await res.json();
-
-        if (res.ok) {
-          setUserName(data.name || 'User');
-        } else {
-          Alert.alert('Error', data.error || 'Failed to fetch user info.');
-        }
+        setUser(storedUser);
       } catch (err) {
-        console.error('User fetch failed:', err);
-        Alert.alert('Error', 'Unable to load user data.');
+        console.error('❌ Failed to load user:', err);
+        Alert.alert('Error', 'Could not retrieve user data.');
       } finally {
         setLoading(false);
       }
     };
 
-    fetchUser();
+    fetchAndSetUser();
   }, []);
+
+  const goToMain = () => {
+    if (!user) return;
+    switch (user.role) {
+      case 'admin':
+        router.push('/admin-dashboard');
+        break;
+      case 'driver':
+        router.push('/driver-dashboard');
+        break;
+      default:
+        router.push('/ride-booking');
+    }
+  };
 
   if (loading) {
     return (
-      <View style={styles.container}>
-        <ActivityIndicator size="large" color="#000" />
+      <View style={styles.centered}>
+        <ActivityIndicator size="large" color="#007AFF" />
+        <Text style={styles.loadingText}>Loading your info...</Text>
       </View>
     );
   }
 
   return (
     <View style={styles.container}>
-      <Text style={styles.welcome}>Welcome back, {userName} 👋</Text>
-      <Button title="Book a Ride" onPress={() => router.push('/ride-booking')} />
-      <View style={styles.spacer} />
-      <Button title="View Ride History" onPress={() => router.push('/ride-history')} />
+      <Text style={styles.title}>Welcome, {user?.name} 👋</Text>
+      <Text style={styles.role}>Role: {user?.role}</Text>
+      <TouchableOpacity style={styles.button} onPress={goToMain}>
+        <Text style={styles.buttonText}>Go to Dashboard</Text>
+      </TouchableOpacity>
     </View>
   );
 }
 
 const styles = StyleSheet.create({
-  container: {
-    flex: 1,
-    justifyContent: 'center',
-    alignItems: 'center'
+  container: { flex: 1, justifyContent: 'center', alignItems: 'center', backgroundColor: '#fff' },
+  title: { fontSize: 28, fontWeight: 'bold', marginBottom: 10 },
+  role: { fontSize: 18, color: '#333', marginBottom: 30 },
+  button: {
+    backgroundColor: '#007AFF',
+    paddingVertical: 12,
+    paddingHorizontal: 24,
+    borderRadius: 8,
   },
-  welcome: {
-    fontSize: 22,
-    marginBottom: 30
-  },
-  spacer: {
-    height: 20
-  }
+  buttonText: { color: '#fff', fontSize: 16 },
+  centered: { flex: 1, justifyContent: 'center', alignItems: 'center' },
+  loadingText: { marginTop: 10, fontSize: 16, color: '#555' },
 });
