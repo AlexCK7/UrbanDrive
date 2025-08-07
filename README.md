@@ -1,50 +1,83 @@
-# Welcome to your Expo app 👋
+# 🚗 UrbanDrive — Social Ride Sharing & Route Coordination
 
-This is an [Expo](https://expo.dev) project created with [`create-expo-app`](https://www.npmjs.com/package/create-expo-app).
+UrbanDrive is a mobile-first app that helps friends plan meetups, coordinate pickups, and view shared ride routes. Users are assigned roles (`rider`, `driver`, or `admin`) with role-specific dashboards.
 
-## Get started
+---
 
-1. Install dependencies
-
-   ```bash
-   npm install
-   ```
-
-2. Start the app
-
-   ```bash
-   npx expo start
-   ```
-
-In the output, you'll find options to open the app in a
-
-- [development build](https://docs.expo.dev/develop/development-builds/introduction/)
-- [Android emulator](https://docs.expo.dev/workflow/android-studio-emulator/)
-- [iOS simulator](https://docs.expo.dev/workflow/ios-simulator/)
-- [Expo Go](https://expo.dev/go), a limited sandbox for trying out app development with Expo
-
-You can start developing by editing the files inside the **app** directory. This project uses [file-based routing](https://docs.expo.dev/router/introduction).
-
-## Get a fresh project
-
-When you're ready, run:
+## 📦 Backend Setup
 
 ```bash
-npm run reset-project
+cd urbandrive-server
+npm install
+./start-dev.sh
 ```
 
-This command will move the starter code to the **app-example** directory and create a blank **app** directory where you can start developing.
+Backend runs on `http://localhost:3001`. Make sure your `.env` file is configured properly (see `.env.example`).
 
-## Learn more
+---
 
-To learn more about developing your project with Expo, look at the following resources:
+## 📱 Frontend Setup (Expo)
 
-- [Expo documentation](https://docs.expo.dev/): Learn fundamentals, or go into advanced topics with our [guides](https://docs.expo.dev/guides).
-- [Learn Expo tutorial](https://docs.expo.dev/tutorial/introduction/): Follow a step-by-step tutorial where you'll create a project that runs on Android, iOS, and the web.
+```bash
+cd UrbanDrive
+npm install
+npx expo start --tunnel
+```
 
-## Join the community
+You can test on your phone using Expo Go or on emulators.
 
-Join our community of developers creating universal apps.
+---
 
-- [Expo on GitHub](https://github.com/expo/expo): View our open source platform and contribute.
-- [Discord community](https://chat.expo.dev): Chat with Expo users and ask questions.
+## 👥 Roles and Access
+
+| Role    | Access |
+|---------|--------|
+| User    | Book rides, see ride history |
+| Driver  | See assigned rides |
+| Admin   | View all rides, assign drivers, manage users |
+
+---
+
+## 💡 Features
+
+- Secure login/signup (role-based)
+- Header-based auth via `x-user-email`
+- Persistent session using Expo SecureStore
+- Mobile-friendly UI with native loading states and alerts
+- Admin dashboard to view and assign rides
+- Driver & User dashboards with real-time data
+- Polished UI with route-based navigation (`expo-router`)
+- Pull-to-refresh and error handling (where needed)
+
+---
+
+## 📁 Folder Structure
+
+```bash
+UrbanDrive/
+├── app/
+│   ├── login.tsx
+│   ├── signup.tsx
+│   ├── home.tsx
+│   ├── ride-booking.tsx
+│   ├── ride-history.tsx
+│   ├── driver-dashboard.tsx
+│   ├── admin-dashboard.tsx
+│   └── index.tsx
+├── utils/
+│   ├── constants.ts
+│   └── secureStore.ts
+```
+
+---
+
+## ✅ Next Steps
+
+- [ ] Finalize admin-dashboard
+- [ ] Polish feedback & UI
+- [ ] Add final README polish
+- [ ] Resume + Portfolio integration
+
+---
+
+## 👤 Built with ❤️ by Taiga
