@@ -3,22 +3,15 @@
   "compilerOptions": {
     "strict": true,
     "paths": {
-      "@/*": [
-        "./*"
-      ]
+      "@/*": ["./*"]
     },
     "jsx": "react-native",
-    "lib": [
-      "dom",
-      "esnext"
-    ],
-    "types": [
-      "react",
-      "react-native"
-    ]
+    "lib": ["dom", "esnext"],
+    "types": ["react", "react-native"]
   },
   "include": [
     "**/*.ts",
-    "**/*.tsx"
+    "**/*.tsx",
+    "declaration.d.ts"
   ]
 }
