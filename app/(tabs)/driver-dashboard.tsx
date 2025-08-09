@@ -1,88 +1,94 @@
-import { useRouter } from 'expo-router';
-import { useEffect, useState } from 'react';
-import { ActivityIndicator, Alert, FlatList, RefreshControl, StyleSheet, Text, View } from 'react-native';
-import { BASE_URL } from '../../utils/constants';
-import { getUserInfo } from '../../utils/secureStore';
+import { useCallback, useEffect, useState } from "react";
+import { ActivityIndicator, Alert, Button, ScrollView, Text, View } from "react-native";
+import RoleGate from "../../components/RoleGate";
+import type { UserRole } from "../../utils/roles";
+import { getUserInfo } from "../../utils/secureStore";
+import { getBaseUrl } from "../../utils/tunnel";
+
+type Ride = {
+  id: number; origin: string; destination: string; status: string; requested_at: string;
+};
 
 export default function DriverDashboard() {
-  const router = useRouter();
-  const [rides, setRides] = useState<any[]>([]);
+  const [role, setRole] = useState<UserRole | undefined>();
   const [loading, setLoading] = useState(true);
-  const [refreshing, setRefreshing] = useState(false);
+  const [rides, setRides] = useState<Ride[]>([]);
 
-  const fetchRides = async () => {
+  const load = useCallback(async () => {
     const user = await getUserInfo();
-    if (!user?.email || user.role !== 'driver') {
-      Alert.alert('Access Denied', 'Only drivers can view this dashboard.');
-      router.replace('/home');
+    setRole(user?.role as UserRole | undefined);
+    if (!(user?.role === "driver" || user?.role === "admin")) {
+      setLoading(false);
       return;
     }
-    setLoading(true);
     try {
-      const res = await fetch(`${BASE_URL}/api/rides/driver`, {
-        headers: { 'x-user-email': user.email },
+      const base = await getBaseUrl();
+      const res = await fetch(`${base}/api/rides/driver`, {
+        headers: { "x-user-email": user.email },
       });
       const data = await res.json();
       setRides(Array.isArray(data.rides) ? data.rides : []);
-    } catch (err) {
-      Alert.alert('Error', 'Could not load driver rides.');
+    } catch (e) {
+      console.log(e);
+      Alert.alert("Error", "Failed to load rides.");
     } finally {
       setLoading(false);
-      setRefreshing(false);
+    }
+  }, []);
+
+  useEffect(() => {
+    load();
+    const id = setInterval(load, 10000);
+    return () => clearInterval(id);
+  }, [load]);
+
+  const markComplete = async (rideId: number) => {
+    const user = await getUserInfo();
+    try {
+      const base = await getBaseUrl();
+      const res = await fetch(`${base}/api/rides/${rideId}/complete`, {
+        method: "PATCH",
+        headers: {
+          "Content-Type": "application/json",
+          "x-user-email": user?.email || "",
+        },
+      });
+      if (!res.ok) {
+        const err = await res.json().catch(() => ({}));
+        Alert.alert("Error", err?.error || "Failed to complete");
+        return;
+      }
+      await load();
+    } catch {
+      Alert.alert("Error", "Network error");
     }
   };
 
-  useEffect(() => {
-    fetchRides();
-  }, []);
-
-  const onRefresh = () => {
-    setRefreshing(true);
-    fetchRides();
-  };
-
-  if (loading) {
-    return (
-      <View style={styles.centered}>
-        <ActivityIndicator size="large" color="#007AFF" />
-        <Text>Loading rides...</Text>
-      </View>
-    );
-  }
-
-  const renderItem = ({ item }: { item: any }) => (
-    <View style={styles.card}>
-      <Text style={styles.bold}>Ride #{item.id}</Text>
-      <Text>From: {item.origin}</Text>
-      <Text>To: {item.destination}</Text>
-      <Text>Status: {item.status}</Text>
-      <Text>Requested: {new Date(item.requested_at).toLocaleString()}</Text>
-    </View>
-  );
+  if (loading) return <ActivityIndicator style={{ marginTop: 40 }} />;
 
   return (
-    <View style={styles.container}>
-      <Text style={styles.title}>Driver Dashboard</Text>
-      <FlatList
-        data={rides}
-        keyExtractor={(item) => item.id.toString()}
-        renderItem={renderItem}
-        refreshControl={<RefreshControl refreshing={refreshing} onRefresh={onRefresh} />}
-        ListEmptyComponent={<Text>No assigned rides found.</Text>}
-      />
-    </View>
+    <RoleGate role={role} allow={["driver","admin"]}>
+      <ScrollView contentContainerStyle={{ padding: 16 }}>
+        <Text style={{ fontSize: 24, fontWeight: "700", marginBottom: 16 }}>Driver Dashboard</Text>
+        {rides.length === 0 ? (
+          <Text>No assigned rides yet.</Text>
+        ) : (
+          rides.map(r => (
+            <View key={r.id} style={{ marginBottom: 16, paddingBottom: 12, borderBottomWidth: 0.5 }}>
+              <Text style={{ fontWeight: "600" }}>Ride #{r.id}</Text>
+              <Text>From: {r.origin}</Text>
+              <Text>To: {r.destination}</Text>
+              <Text>Status: {r.status}</Text>
+              <Text>Requested: {new Date(r.requested_at).toLocaleString()}</Text>
+              {r.status !== "completed" && (
+                <View style={{ marginTop: 10 }}>
+                  <Button title="Mark as completed" onPress={() => markComplete(r.id)} />
+                </View>
+              )}
+            </View>
+          ))
+        )}
+      </ScrollView>
+    </RoleGate>
   );
 }
-
-const styles = StyleSheet.create({
-  container: { flex: 1, padding: 20 },
-  title: { fontSize: 22, fontWeight: 'bold', marginBottom: 10 },
-  card: {
-    backgroundColor: '#f2f2f2',
-    padding: 16,
-    borderRadius: 8,
-    marginBottom: 12,
-  },
-  bold: { fontWeight: '700', marginBottom: 4 },
-  centered: { flex: 1, justifyContent: 'center', alignItems: 'center' },
-});

@@ -1,112 +1,108 @@
-// app/(tabs)/admin-dashboard.tsx
-import { Picker } from '@react-native-picker/picker';
-import { useEffect, useState } from 'react';
-import { ActivityIndicator, Alert, Button, ScrollView, StyleSheet, Text, View } from 'react-native';
-import { BASE_URL } from '../../utils/constants';
-import { getUserInfo } from '../../utils/secureStore';
+import { Picker } from "@react-native-picker/picker";
+import { useCallback, useEffect, useState } from "react";
+import { ActivityIndicator, Alert, Button, ScrollView, StyleSheet, Text, View } from "react-native";
+import RoleGate from "../../components/RoleGate";
+import type { UserRole } from "../../utils/roles";
+import { getUserInfo } from "../../utils/secureStore";
+import { getBaseUrl } from "../../utils/tunnel";
+
+type Ride = { id:number; origin:string; destination:string; status:string; requested_at:string; };
+type Driver = { id:number; name:string; email:string; };
 
 export default function AdminDashboard() {
-  const [rides, setRides] = useState<any[]>([]);
-  const [drivers, setDrivers] = useState<any[]>([]);
-  const [assignDriver, setAssignDriver] = useState<{ [rideId: number]: string }>({});
+  const [role, setRole] = useState<UserRole | undefined>();
   const [loading, setLoading] = useState(true);
-  const [unauthorized, setUnauthorized] = useState(false);
+  const [rides, setRides] = useState<Ride[]>([]);
+  const [drivers, setDrivers] = useState<Driver[]>([]);
+  const [assignDriver, setAssignDriver] = useState<Record<number, string>>({});
 
-  const loadData = async () => {
+  const load = useCallback(async () => {
     const user = await getUserInfo();
-    if (!user?.email || user.role !== 'admin') {
-      setUnauthorized(true);
+    setRole(user?.role as UserRole | undefined);
+    if (user?.role !== "admin") {
       setLoading(false);
       return;
     }
-    try {
-      const ridesRes = await fetch(`${BASE_URL}/api/rides`, { headers: { 'x-user-email': user.email } });
-      const ridesData = await ridesRes.json();
-      const driversRes = await fetch(`${BASE_URL}/admin/drivers`, { headers: { 'x-user-email': user.email } });
-      const driversData = await driversRes.json();
-      setRides(Array.isArray(ridesData.rides) ? ridesData.rides : []);
-      setDrivers(Array.isArray(driversData) ? driversData : []);
-    } catch (error) {
-      Alert.alert('Error', 'Failed to load data');
-    } finally {
-      setLoading(false);
-    }
-  };
-
-  useEffect(() => {
-    loadData();
-    const interval = setInterval(() => loadData(), 10000);
-    return () => clearInterval(interval);
+    const base = await getBaseUrl();
+    const [r1, r2] = await Promise.all([
+      fetch(`${base}/api/rides`, { headers: { "x-user-email": user.email }}),
+      fetch(`${base}/admin/drivers`, { headers: { "x-user-email": user.email }}),
+    ]);
+    const rd = await r1.json();
+    const dd = await r2.json();
+    setRides(Array.isArray(rd.rides) ? rd.rides : []);
+    setDrivers(Array.isArray(dd) ? dd : []);
+    setLoading(false);
   }, []);
 
-  const handleAssign = async (rideId: number) => {
+  useEffect(() => {
+    load();
+    const id = setInterval(load, 10000);
+    return () => clearInterval(id);
+  }, [load]);
+
+  const handleAssign = async (rideId:number) => {
     const user = await getUserInfo();
+    const base = await getBaseUrl();
     const driverEmail = assignDriver[rideId];
-    if (!driverEmail) {
-      Alert.alert('Select a driver first');
-      return;
+    if (!driverEmail) return Alert.alert("Pick a driver first");
+    const res = await fetch(`${base}/api/rides/${rideId}/assign`, {
+      method: "PATCH",
+      headers: { "Content-Type": "application/json", "x-user-email": user?.email || "" },
+      body: JSON.stringify({ driverEmail }),
+    });
+    if (!res.ok) {
+      const err = await res.json().catch(()=>({}));
+      return Alert.alert("Error", err?.error || "Failed to assign");
     }
-    try {
-      const res = await fetch(`${BASE_URL}/api/rides/${rideId}/assign`, {
-        method: 'PATCH',
-        headers: {
-          'Content-Type': 'application/json',
-          'x-user-email': user?.email || '',
-        },
-        body: JSON.stringify({ driverEmail }),
-      });
-      const data = await res.json();
-      if (res.ok) {
-        Alert.alert('Success', 'Ride assigned successfully');
-        loadData();
-      } else {
-        Alert.alert('Error', data?.error || 'Failed to assign driver');
-      }
-    } catch (err) {
-      Alert.alert('Error', 'Failed to assign driver');
-    }
+    Alert.alert("Assigned", "Ride assigned successfully");
+    load();
   };
 
   if (loading) return <ActivityIndicator style={{ marginTop: 40 }} />;
 
-  if (unauthorized) {
-    return (
-      <View style={styles.centered}>
-        <Text style={styles.error}>Access denied. You are not an admin.</Text>
-      </View>
-    );
-  }
-
   return (
-    <ScrollView style={{ padding: 20 }}>
-      <Text style={styles.header}>All Ride Requests</Text>
-      {rides.map((ride) => (
-        <View key={ride.id} style={{ marginBottom: 20 }}>
-          <Text>{ride.origin} ➜ {ride.destination} ({ride.status})</Text>
-          {ride.status === 'pending' && (
-            <>
-              <Picker
-                selectedValue={assignDriver[ride.id]}
-                onValueChange={(value: string) => setAssignDriver((prev) => ({ ...prev, [ride.id]: value }))}
-                style={styles.picker}
-              >
-                <Picker.Item label="Select driver" value="" />
-                {drivers.map((driver: any) => (
-                  <Picker.Item key={driver.id} label={driver.name} value={driver.email} />
-                ))}
-              </Picker>
-              <Button title="Assign Driver" onPress={() => handleAssign(ride.id)} />
-            </>
-          )}
-        </View>
-      ))}
-    </ScrollView>
+    <RoleGate role={role} allow={["admin"]}>
+      <ScrollView contentContainerStyle={{ padding: 16 }}>
+        <Text style={s.h1}>Admin Panel</Text>
+        <Text style={s.sectionLabel}>Ride Requests</Text>
+        {rides.length === 0 ? <Text>No rides yet.</Text> : rides.map(ride => (
+          <View key={ride.id} style={s.card}>
+            <Text style={s.cardTitle}>Ride #{ride.id}</Text>
+            <Text>From: {ride.origin}</Text>
+            <Text>To: {ride.destination}</Text>
+            <Text>Status: {ride.status}</Text>
+            <Text>Requested: {new Date(ride.requested_at).toLocaleString()}</Text>
+
+            {ride.status === "pending" && (
+              <View style={{ marginTop: 8 }}>
+                <Picker
+                  selectedValue={assignDriver[ride.id]}
+                  onValueChange={(value: string, _index: number) =>
+                  setAssignDriver(prev => ({ ...prev, [ride.id]: value }))
+                  }
+                  style={s.picker}
+                >
+                  <Picker.Item label="Select driver…" value="" />
+                  {drivers.map(d => (
+                  <Picker.Item key={d.id} label={d.name} value={d.email} />
+                  ))}
+                  </Picker>
+
+                <Button title="Assign Driver" onPress={() => handleAssign(ride.id)} />
+              </View>
+            )}
+          </View>
+        ))}
+      </ScrollView>
+    </RoleGate>
   );
 }
 
-const styles = StyleSheet.create({
-  picker: { height: 45, width: '100%', marginVertical: 10 },
-  centered: { flex: 1, justifyContent: 'center', alignItems: 'center', padding: 20 },
-  error: { fontSize: 16, color: 'red' },
-  header: { fontSize: 20, fontWeight: 'bold', marginBottom: 10 },
+const s = StyleSheet.create({
+  h1: { fontSize: 28, fontWeight: "700", marginBottom: 14 },
+  sectionLabel: { fontSize: 16, fontWeight: "600", marginBottom: 8 },
+  card: { paddingBottom: 12, marginBottom: 16, borderBottomWidth: 0.5, borderColor: "#ddd" },
+  cardTitle: { fontWeight: "700", marginBottom: 6 },
+  picker: { height: 50, width: "100%", marginVertical: 10 },
 });
