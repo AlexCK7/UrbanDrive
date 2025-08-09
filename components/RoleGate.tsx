@@ -2,7 +2,7 @@
 import React from "react";
 import { View } from "react-native";
 import type { UserRole } from "../utils/roles";
-import Unauthorized from "./Unauthorized"; // NOTE: exact casing
+import Unauthorized from "./Unauthorized";
 
 type Props = {
   role: UserRole | undefined;
