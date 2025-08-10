@@ -1,16 +1,32 @@
-import * as SecureStore from 'expo-secure-store';
+// utils/secureStore.ts
+import * as SecureStore from "expo-secure-store";
 
-const USER_KEY = 'user-info';
+const KEY = "ud.user";
 
-export const saveUserInfo = async (user: object) => {
-  await SecureStore.setItemAsync(USER_KEY, JSON.stringify(user));
+export type StoredUser = {
+  id?: number;
+  name?: string;
+  email: string;
+  role?: "user" | "driver" | "admin";
 };
 
-export const getUserInfo = async () => {
-  const result = await SecureStore.getItemAsync(USER_KEY);
-  return result ? JSON.parse(result) : null;
-};
+export async function saveUserInfo(user: StoredUser) {
+  await SecureStore.setItemAsync(KEY, JSON.stringify(user));
+}
 
-export const clearUserInfo = async () => {
-  await SecureStore.deleteItemAsync(USER_KEY);
-};
+export async function getUserInfo(): Promise<StoredUser | null> {
+  const raw = await SecureStore.getItemAsync(KEY);
+  return raw ? (JSON.parse(raw) as StoredUser) : null;
+}
+
+export async function deleteUserInfo() {
+  await SecureStore.deleteItemAsync(KEY);
+}
+
+// optional helper
+export async function updateUserInfo(patch: Partial<StoredUser>) {
+  const cur = (await getUserInfo()) ?? ({} as StoredUser);
+  const next = { ...cur, ...patch };
+  await saveUserInfo(next);
+  return next;
+}

@@ -58,3 +58,7 @@ yarn-error.*
 # 🧪 Misc
 # ====================================
 app-example
+.env.local
+app-example/
+backup-before-reset-*/
+# ====================================
